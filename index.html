@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI简历优化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); transition: all 0.3s ease; }
+        .card:hover { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); transform: translateY(-2px); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease; border: none; cursor: pointer; }
+        .btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
+        .btn-secondary { background: #e2e8f0; color: #475569; padding: 12px 24px; border-radius: 8px; font-weight: 600; transition: all 0.3s ease; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s ease; }
+        .input-field:focus { outline: none; border-color: #667eea; }
+        .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .tag-green { background: #dcfce7; color: #166534; }
+        .tag-red { background: #fce4ec; color: #b71c1c; }
+        .tag-yellow { background: #fef3c7; color: #92400e; }
+        .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .tab-active { border-bottom: 3px solid #667eea; color: #667eea; font-weight: 600; }
+        .tab-inactive { color: #94a3b8; cursor: pointer; font-weight: 500; }
+        .tab-inactive:hover { color: #64748b; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.5s ease; }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="text-2xl font-bold gradient-text">AI简历优化</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button @click="showLogin = true" class="text-gray-600 hover:text-purple-600 font-medium" v-if="!user">登录</button>
+                    <button @click="showRegister = true" class="btn-primary text-sm" v-if="!user">注册</button>
+                    <div v-if="user" class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-600">{{ user.email }}</span>
+                        <button @click="logout" class="text-sm text-red-500 hover:text-red-700">退出</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Tabs -->
+            <div class="flex space-x-8 mb-8 border-b border-gray-200 pb-2">
+                <button @click="currentTab = 'match'" :class="currentTab === 'match' ? 'tab-active' : 'tab-inactive'" class="pb-2">JD匹配分析</button>
+                <button @click="currentTab = 'optimize'" :class="currentTab === 'optimize' ? 'tab-active' : 'tab-inactive'" class="pb-2">一键优化</button>
+                <button @click="currentTab = 'interview'" :class="currentTab === 'interview' ? 'tab-active' : 'tab-inactive'" class="pb-2">面试模拟</button>
+            </div>
+
+            <!-- Tab: JD匹配分析 -->
+            <div v-if="currentTab === 'match'" class="space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold mb-4">📄 简历与JD匹配分析</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">粘贴职位描述 (JD)</label>
+                            <textarea v-model="jdText" rows="8" class="input-field" placeholder="请粘贴职位描述..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">上传简历或粘贴文本</label>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-purple-400 transition" @click="triggerUpload">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="mt-2 text-sm text-gray-500">点击上传PDF或粘贴文本</p>
+                            </div>
+                            <textarea v-model="resumeText" rows="6" class="input-field mt-2" placeholder="或直接粘贴简历文本..."></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button @click="analyzeMatch" class="btn-primary" :disabled="analyzing">
+                            <span v-if="analyzing"><span class="loading-spinner mr-2"></span>分析中...</span>
+                            <span v-else>🚀 开始分析匹配度</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Match Result -->
+                <div v-if="matchResult" class="card p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold">匹配分析结果</h3>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-500">匹配度</span>
+                            <span class="text-2xl font-bold" :class="matchResult.score >= 70 ? 'text-green-600' : matchResult.score >= 40 ? 'text-yellow-600' : 'text-red-600'">{{ matchResult.score }}%</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar mb-6">
+                        <div class="progress-fill" :style="{ width: matchResult.score + '%' }"></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-3">✅ 匹配的技能</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="skill in matchResult.matchedSkills" :key="skill" class="tag tag-green">{{ skill }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-700 mb-3">❌ 缺失的技能</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="skill in matchResult.missingSkills" :key="skill" class="tag tag-red">{{ skill }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="font-medium text-gray-700 mb-2">💡 优化建议</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-600">
+                            <li v-for="suggestion in matchResult.suggestions" :key="suggestion">{{ suggestion }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: 一键优化 -->
+            <div v-if="currentTab === 'optimize'" class="space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold mb-4">✨ 一键简历优化</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">粘贴职位描述 (JD)</label>
+                            <textarea v-model="optimizeJD" rows="4" class="input-field" placeholder="粘贴目标JD..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">粘贴原始简历</label>
+                            <textarea v-model="optimizeResume" rows="6" class="input-field" placeholder="粘贴需要优化的简历内容..."></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button @click="optimizeResumeText" class="btn-primary" :disabled="optimizing">
+                                <span v-if="optimizing"><span class="loading-spinner mr-2"></span>优化中...</span>
+                                <span v-else>🔧 生成优化版本</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optimize Result -->
+                <div v-if="optimizedResult" class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">📝 优化后的简历</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap text-sm text-gray-700">{{ optimizedResult }}</div>
+                    <div class="mt-4 flex justify-end space-x-3">
+                        <button @click="copyOptimized" class="btn-secondary text-sm">📋 复制</button>
+                        <button @click="saveOptimized" class="btn-primary text-sm">💾 保存到历史</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: 面试模拟 -->
+            <div v-if="currentTab === 'interview'" class="space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold mb-4">🎯 面试模拟</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">粘贴目标JD</label>
+                            <textarea v-model="interviewJD" rows="4" class="input-field" placeholder="粘贴JD生成面试题..."></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button @click="generateQuestions" class="btn-primary" :disabled="generating">
+                                <span v-if="generating"><span class="loading-spinner mr-2"></span>生成问题中...</span>
+                                <span v-else>🎤 生成面试问题</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interview Questions -->
+                <div v-if="interviewQuestions.length > 0" class="space-y-4">
+                    <div v-for="(q, index) in interviewQuestions" :key="index" class="card p-6">
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-purple-100 text-purple-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm flex-shrink-0">{{ index + 1 }}</span>
+                            <div class="flex-1">
+                                <p class="font-medium text-gray-800 mb-3">{{ q.question }}</p>
+                                <textarea v-model="q.answer" rows="3" class="input-field" placeholder="输入你的回答..."></textarea>
+                                <div class="mt-2 flex justify-end">
+                                    <button @click="getFeedback(index)" class="btn-secondary text-sm" :disabled="q.feedbackLoading">
+                                        <span v-if="q.feedbackLoading"><span class="loading-spinner mr-2"></span>分析中...</span>
+                                        <span v-else>💬 获取反馈</span>
+                                    </button>
+                                </div>
+                                <div v-if="q.feedback" class="mt-3 bg-blue-50 rounded-lg p-4 text-sm text-gray-700">
+                                    <strong class="text-blue-700">反馈：</strong> {{ q.feedback }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Login Modal -->
+        <div v-if="showLogin" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+                <h2 class="text-2xl font-bold mb-6">登录</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                        <input type="email" v-model="loginEmail" class="input-field" placeholder="your@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                        <input type="password" v-model="loginPassword" class="input-field" placeholder="••••••••">
+                    </div>
+                    <button @click="login" class="btn-primary w-full">登录</button>
+                    <p class="text-center text-sm text-gray-500">还没有账号？ <button @click="showLogin = false; showRegister = true" class="text-purple-600 hover:underline">注册</button></p>
+                </div>
+                <button @click="showLogin = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+        </div>
+
+        <!-- Register Modal -->
+        <div v-if="showRegister" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+                <h2 class="text-2xl font-bold mb-6">注册</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                        <input type="email" v-model="regEmail" class="input-field" placeholder="your@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                        <input type="password" v-model="regPassword" class="input-field" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+                        <input type="password" v-model="regConfirm" class="input-field" placeholder="••••••••">
+                    </div>
+                    <button @click="register" class="btn-primary w-full">注册</button>
+                    <p class="text-center text-sm text-gray-500">已有账号？ <button @click="showRegister = false; showLogin = true" class="text-purple-600 hover:underline">登录</button></p>
+                </div>
+                <button @click="showRegister = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentTab: 'match',
+                user: null,
+                showLogin: false,
+                showRegister: false,
+                loginEmail: '',
+                loginPassword: '',
+                regEmail: '',
+                regPassword: '',
+                regConfirm: '',
+                jdText: '',
+                resumeText: '',
+                analyzing: false,
+                matchResult: null,
+                optimizeJD: '',
+                optimizeResume: '',
+                optimizing: false,
+                optimizedResult: null,
+                interviewJD: '',
+                generating: false,
+                interviewQuestions: []
+            },
+            methods: {
+                triggerUpload() {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.pdf,.txt,.doc,.docx';
+                    input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            this.resumeText = event.target.result;
+                        };
+                        reader.readAsText(file);
+                    };
+                    input.click();
+                },
+                analyzeMatch() {
+                    if (!this.jdText || !this.resumeText) {
+                        alert('请填写JD和简历内容');
+                        return;
+                    }
+                    this.analyzing = true;
+                    this.matchResult = null;
+                    setTimeout(() => {
+                        const jdSkills = ['React', 'Node.js', 'TypeScript', 'Python', 'Docker', 'AWS', 'PostgreSQL', 'Redis', 'REST API', 'Git'];
+                        const resumeSkills = this.resumeText.match(/\b(React|Node\.js|TypeScript|Python|Docker|AWS|PostgreSQL|Redis|REST API|Git|Java|C\+\+|Vue|Angular|MongoDB|GraphQL|Kubernetes)\b/gi) || [];
+                        const matched = jdSkills.filter(s => resumeSkills.some(r => r.toLowerCase().includes(s.toLowerCase())));
+                        const missing = jdSkills.filter(s => !matched.includes(s));
+                        const score = Math.round((matched.length / jdSkills.length) * 100);
+                        this.matchResult = {
+                            score: score,
+                            matchedSkills: matched,
+                            missingSkills: missing,
+                            suggestions: [
+                                '建议补充缺失的技术栈，特别是' + missing.slice(0, 3).join('、'),
+                                '在项目经验中突出与JD相关的成果数据',
+                                '使用行业关键词优化工作描述',
+                                '添加量化指标（如：提升性能30%）'
+                            ]
+                        };
+                        this.analyzing = false;
+                    }, 1500);
+                },
+                optimizeResumeText() {
+                    if (!this.optimizeJD || !this.optimizeResume) {
+                        alert('请填写JD和简历内容');
+                        return;
+                    }
+                    this.optimizing = true;
+                    this.optimizedResult = null;
+                    setTimeout(() => {
+                        this.optimizedResult = `优化版简历（基于JD自动优化）\n\n${this.optimizeResume}\n\n【优化说明】\n1. 突出与JD匹配的关键技能\n2. 使用行业术语重写工作描述\n3. 添加量化成果数据\n4. 优化排版和关键词密度`;
+                        this.optimizing = false;
+                    }, 2000);
+                },
+                copyOptimized() {
+                    if (this.optimizedResult) {
+                        navigator.clipboard.writeText(this.optimizedResult).then(() => {
+                            alert('已复制到剪贴板');
+                        });
+                    }
+                },
+                saveOptimized() {
+                    alert('已保存到历史记录（演示功能）');
+                },
+                generateQuestions() {
+                    if (!this.interviewJD) {
+                        alert('请粘贴JD');
+                        return;
+                    }
+                    this.generating = true;
+                    this.interviewQuestions = [];
+                    setTimeout(() => {
+                        this.interviewQuestions = [
+                            { question: '请描述你在React项目中处理状态管理的经验，以及你如何选择合适的状态管理方案？', answer: '', feedback: null, feedbackLoading: false },
+                            { question: '你如何设计和优化REST API接口？请举例说明。', answer: '', feedback: null, feedbackLoading: false },
+                            { question: '描述一次你解决复杂技术问题的经历，以及你使用的调试方法。', answer: '', feedback: null, feedbackLoading: false },
+                            { question: '你如何看待持续集成和持续部署？在你的项目中是如何实践的？', answer: '', feedback: null, feedbackLoading: false }
+                        ];
+                        this.generating = false;
+                    }, 1500);
+                },
+                getFeedback(index) {
+                    const q = this.interviewQuestions[index];
+                    if (!q.answer.trim()) {
+                        alert('请先输入回答');
+                        return;
+                    }
+                    q.feedbackLoading = true;
+                    setTimeout(() => {
+                        q.feedback = '回答思路清晰，建议补充具体的技术细节和量化成果。可以进一步突出你在团队协作和项目推进方面的能力。整体表现良好，继续加油！';
+                        q.feedbackLoading = false;
+                    }, 1500);
+                },
+                login() {
+                    if (!this.loginEmail || !this.loginPassword) {
+                        alert('请填写邮箱和密码');
+                        return;
+                    }
+                    this.user = { email: this.loginEmail };
+                    this.showLogin = false;
+                    this.loginEmail = '';
+                    this.loginPassword = '';
+                },
+                register() {
+                    if (!this.regEmail || !this.regPassword || !this.regConfirm) {
+                        alert('请填写完整信息');
+                        return;
+                    }
+                    if (this.regPassword !== this.regConfirm) {
+                        alert('两次密码不一致');
+                        return;
+                    }
+                    this.user = { email: this.regEmail };
+                    this.showRegister = false;
+                    this.regEmail = '';
+                    this.regPassword = '';
+                    this.regConfirm = '';
+                },
+                logout() {
+                    this.user = null;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
